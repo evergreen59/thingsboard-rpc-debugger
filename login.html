@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-bs-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ThingsBoard RPC调试工具 - 登录</title>
+  <link rel="stylesheet" href="./node_modules/bootstrap/dist/css/bootstrap.min.css">
+  <style>
+    :root {
+      --bg-color: #f8f9fa;
+      --card-bg: #ffffff;
+      --border-color: #ddd;
+      --text-color: #212529;
+    }
+    
+    [data-bs-theme="dark"] {
+      --bg-color: #212529;
+      --card-bg: #343a40;
+      --border-color: #495057;
+      --text-color: #f8f9fa;
+    }
+    
+    body {
+      padding: 20px;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      transition: background-color 0.3s ease;
+    }
+    .login-container {
+      max-width: 450px;
+      width: 100%;
+    }
+    .card {
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      background-color: var(--card-bg);
+      border-color: var(--border-color);
+    }
+    .logo-container {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .logo-title {
+      font-size: 24px;
+      font-weight: bold;
+      color: var(--text-color);
+    }
+    .alert {
+      display: none;
+      margin-top: 15px;
+    }
+    .theme-switch {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="theme-switch">
+    <button id="theme-toggle" class="btn btn-outline-secondary">
+      <i class="theme-icon">🌙</i>
+    </button>
+  </div>
+  
+  <div class="login-container">
+    <div class="logo-container">
+      <div class="logo-title">ThingsBoard RPC调试工具</div>
+    </div>
+    
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0">登录到ThingsBoard服务器</h5>
+      </div>
+      <div class="card-body">
+        <form id="login-form">
+          <div class="mb-3">
+            <label for="server-url" class="form-label">服务器URL</label>
+            <input type="text" class="form-control" id="server-url" placeholder="例如：http://localhost:8080" required>
+          </div>
+          <div class="mb-3">
+            <label for="username" class="form-label">用户名</label>
+            <input type="text" class="form-control" id="username" placeholder="用户名" required>
+          </div>
+          <div class="mb-3">
+            <label for="password" class="form-label">密码</label>
+            <input type="password" class="form-control" id="password" placeholder="密码" required>
+          </div>
+          <div class="form-check mb-3">
+            <input type="checkbox" class="form-check-input" id="remember-me" checked>
+            <label class="form-check-label" for="remember-me">记住我</label>
+          </div>
+          <button type="submit" class="btn btn-primary w-100">登录</button>
+        </form>
+        
+        <div id="login-alert" class="alert alert-danger"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="./theme-manager.js"></script>
+  <script src="./login.js"></script>
+</body>
+</html>

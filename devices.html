@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-bs-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ThingsBoard RPC调试工具 - 设备选择</title>
+  <link rel="stylesheet" href="./node_modules/bootstrap/dist/css/bootstrap.min.css">
+  <style>
+    :root {
+      --bg-color: #f8f9fa;
+      --card-bg: #ffffff;
+      --border-color: #ddd;
+      --text-color: #212529;
+      --hover-color: #f0f0f0;
+    }
+    
+    [data-bs-theme="dark"] {
+      --bg-color: #212529;
+      --card-bg: #343a40;
+      --border-color: #495057;
+      --text-color: #f8f9fa;
+      --hover-color: #495057;
+    }
+    
+    body {
+      padding: 20px;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      transition: background-color 0.3s ease;
+    }
+    .container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .card {
+      margin-bottom: 20px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - 120px); /* 设置固定高度，减去页面上方的内容高度 */
+      background-color: var(--card-bg);
+      border-color: var(--border-color);
+    }
+    .card-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0;
+    }
+    .device-item {
+      cursor: pointer;
+      padding: 12px 15px;
+      border-bottom: 1px solid #eee;
+      transition: background-color 0.2s;
+    }
+    .device-item:hover {
+      background-color: var(--hover-color);
+    }
+    .device-item.active {
+      background-color: #e9f5ff;
+      border-left: 3px solid #007bff;
+    }
+    .device-name {
+      font-weight: 500;
+    }
+    .device-type {
+      color: #6c757d;
+      font-size: 0.9rem;
+    }
+    .device-status {
+      font-size: 0.85rem;
+    }
+    .status-active {
+      color: #28a745;
+    }
+    .status-inactive {
+      color: #dc3545;
+    }
+    .search-box {
+      padding: 15px;
+      background-color: var(--card-bg);
+      border-bottom: 1px solid var(--border-color);
+    }
+    .alert {
+      display: none;
+      margin: 15px;
+    }
+    .header-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .user-info {
+      font-size: 0.9rem;
+      color: #6c757d;
+    }
+    .favorite-btn {
+      color: #ffc107;
+      cursor: pointer;
+      margin-left: 10px;
+      font-size: 1.2rem;
+    }
+    .favorite-btn:hover {
+      color: #ffdb4d;
+    }
+    .favorite-btn.active {
+      color: #ffc107;
+    }
+    .favorite-section {
+      border-bottom: 2px solid #ffc107;
+      background-color: #fff9e6;
+    }
+    .favorite-header {
+      padding: 8px 15px;
+      font-weight: 500;
+      color: #856404;
+      background-color: #fff3cd;
+      border-bottom: 1px solid #ffeeba;
+    }
+    .card-footer {
+      border-top: 1px solid var(--border-color);
+      background-color: var(--card-bg);
+      padding: 15px;
+    }
+    
+    .theme-switch {
+      margin-left: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header-container mb-4">
+      <h1>ThingsBoard RPC调试工具</h1>
+      <div class="d-flex align-items-center">
+        <div class="user-info">
+          <span id="username-display"></span>
+          <button id="logout-btn" class="btn btn-sm btn-outline-secondary ms-2">退出登录</button>
+        </div>
+        <div class="theme-switch">
+          <button id="theme-toggle" class="btn btn-outline-secondary ms-3">
+            <i class="theme-icon">🌙</i>
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="row flex-grow-1">
+      <div class="col-md-8 offset-md-2 d-flex flex-column" style="height: calc(100vh - 100px);">
+        <div class="card">
+          <div class="card-header">
+            <h5 class="mb-0">选择设备</h5>
+          </div>
+          
+          <div id="loading-message" class="alert alert-info m-3">正在加载设备列表...</div>
+          <div id="error-message" class="alert alert-danger m-3"></div>
+          
+          <div class="search-box">
+            <input type="text" id="search-input" class="form-control" placeholder="搜索设备名称或类型...">
+          </div>
+          
+          <div class="card-body">
+            <div id="favorite-devices" class="favorite-section" style="display: none;">
+              <div class="favorite-header">收藏的设备</div>
+              <!-- 收藏的设备将通过JavaScript动态添加 -->
+            </div>
+            
+            <div id="devices-container">
+              <!-- 设备列表将通过JavaScript动态添加 -->
+            </div>
+          </div>
+          
+          <div class="card-footer d-flex justify-content-between">
+            <button id="refresh-btn" class="btn btn-outline-primary">刷新设备列表</button>
+            <button id="select-device-btn" class="btn btn-success" disabled>选择设备</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="./theme-manager.js"></script>
+  <script src="./devices.js"></script>
+</body>
+</html>
