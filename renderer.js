@@ -103,7 +103,7 @@ function initResponseEditor() {
     indentUnit: 2,
     tabSize: 2,
     lineWrapping: true,
-    value: "// 响应数据将显示在这里"
+    value: "响应数据将显示在这里"
   });
 }
 
@@ -496,6 +496,14 @@ rpcForm.addEventListener('submit', (e) => {
 });
 
 clearHistoryBtn.addEventListener('click', clearHistory);
+
+// 返回设备列表按钮点击事件
+const backToDevicesBtn = document.getElementById('back-to-devices');
+if (backToDevicesBtn) {
+  backToDevicesBtn.addEventListener('click', () => {
+    ipcRenderer.send('navigate-to-main');
+  });
+}
 
 // 格式化JSON按钮点击事件
 formatJsonBtn.addEventListener('click', formatJson);

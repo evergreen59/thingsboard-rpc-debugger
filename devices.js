@@ -103,22 +103,47 @@ async function loadDevices() {
   hideError();
   
   try {
-    // 构建API请求URL和头部
-    const url = `${authConfig.serverUrl}/api/tenant/devices?pageSize=100&page=0`;
+    // 构建API请求头部
     const headers = {
       'Content-Type': 'application/json',
       'X-Authorization': `Bearer ${authConfig.token}`
     };
     
-    // 发送请求获取设备列表
-    const response = await axios.get(url, { headers });
+    // 初始化设备数组和分页参数
+    devices = [];
+    let hasMore = true;
+    let page = 0;
+    const pageSize = 100;
     
-    if (response.data && response.data.data) {
-      devices = response.data.data;
-      renderDevicesList(devices);
-    } else {
-      showError('获取设备列表失败：无效的响应格式');
+    // 循环获取所有页面的设备
+    while (hasMore) {
+      // 构建API请求URL（带分页参数）
+      const url = `${authConfig.serverUrl}/api/tenant/devicesNew?pageSize=${pageSize}&page=${page}`;
+      
+      // 发送请求获取当前页设备列表
+      const response = await axios.get(url, { headers });
+      
+      if (response.data && response.data.data) {
+        // 将当前页设备添加到总设备列表
+        const pageDevices = response.data.data;
+        devices = devices.concat(pageDevices);
+        
+        // 如果获取的设备数量小于页面大小，说明已经没有更多设备
+        if (pageDevices.length < pageSize) {
+          hasMore = false;
+        } else {
+          // 继续获取下一页
+          page++;
+        }
+      } else {
+        showError('获取设备列表失败：无效的响应格式');
+        hasMore = false;
+      }
     }
+    
+    // 渲染所有获取到的设备
+    renderDevicesList(devices);
+    
   } catch (error) {
     console.error('获取设备列表失败:', error);
     
