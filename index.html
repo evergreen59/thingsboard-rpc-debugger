@@ -76,6 +76,17 @@
       height: auto;
       min-height: 200px;
     }
+    /* 添加参数编辑器的样式控制 */
+    #params-editor .CodeMirror {
+      height: auto;
+      min-height: 150px;
+      max-height: 200px;
+    }
+    /* 确保CodeMirror滚动条正常工作 */
+    .CodeMirror-scroll {
+      min-height: 150px;
+      max-height: 200px;
+    }
   </style>
 </head>
 <body>
@@ -143,6 +154,13 @@
               <div class="card-body">
                 <form id="rpc-form">
                   <div class="mb-3">
+                    <label for="template-select" class="form-label">模板选择</label>
+                    <select class="form-select" id="template-select">
+                      <option value="" selected>-- 选择模板 --</option>
+                      <!-- 模板选项将通过JavaScript动态加载 -->
+                    </select>
+                  </div>
+                  <div class="mb-3">
                     <label for="method-name" class="form-label">方法名称</label>
                     <input type="text" class="form-control" id="method-name" placeholder="输入RPC方法名称">
                   </div>
@@ -184,7 +202,7 @@
                 <div class="mb-3">
                   <label class="form-label">响应数据</label>
                   <div id="response-editor"></div>
-                  <pre id="response-data" class="response-area d-none">// 响应数据将显示在这里</pre>
+                  <pre id="response-data" class="response-area d-none">响应数据将显示在这里</pre>
                 </div>
               </div>
             </div>

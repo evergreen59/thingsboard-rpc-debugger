@@ -1,0 +1,44 @@
+[
+  {
+    "name": "获取设备属性",
+    "method": "getAttributes",
+    "params": {
+      "clientKeys": ["firmware_version", "serial_number"],
+      "sharedKeys": ["active", "inactivityAlarmTime"]
+    }
+  },
+  {
+    "name": "设置设备属性",
+    "method": "setAttributes",
+    "params": {
+      "firmware_version": "1.0.0",
+      "active": true
+    }
+  },
+  {
+    "name": "重启设备",
+    "method": "reboot",
+    "params": {
+      "delay": 5,
+      "force": false
+    }
+  },
+  {
+    "name": "获取设备状态",
+    "method": "getStatus",
+    "params": {}
+  },
+  {
+    "name": "更新固件",
+    "method": "updateFirmware",
+    "params": {
+      "url": "https://example.com/firmware/latest.bin",
+      "version": "1.1.0"
+    }
+  },
+  {
+    "name": "获取设备软件版本号",
+    "method": "getVersion",
+    "params": {}
+  }
+]

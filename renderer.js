@@ -13,6 +13,7 @@ let serverConfig = { url: '', accessToken: '' };
 let isConnected = false;
 let isDarkMode = false;
 let responseJsonEditor;
+let templates = []; // 存储模板数据
 
 // 日志相关
 const LOG_DIR = path.join(__dirname, 'logs');
@@ -29,6 +30,7 @@ const accessTokenInput = document.getElementById('access-token');
 const serverConfigForm = document.getElementById('server-config-form');
 const connectionStatus = document.getElementById('connection-status');
 const connectionText = document.getElementById('connection-text');
+const templateSelect = document.getElementById('template-select');
 const methodNameInput = document.getElementById('method-name');
 const paramsInput = document.getElementById('params');
 const paramsEditor = document.getElementById('params-editor');
@@ -71,6 +73,9 @@ function initApp() {
   
   // 初始化主题
   initTheme();
+  
+  // 加载模板数据
+  loadTemplates();
 }
 
 // 初始化JSON编辑器
@@ -84,6 +89,8 @@ function initJsonEditor() {
     indentUnit: 2,
     tabSize: 2,
     lineWrapping: true,
+    viewportMargin: Infinity,
+    scrollbarStyle: "native",
     value: paramsInput.value || '{\n  \n}'
   });
   
@@ -91,6 +98,11 @@ function initJsonEditor() {
   jsonEditor.on('change', function() {
     paramsInput.value = jsonEditor.getValue();
   });
+  
+  // 确保滚动条可以正常工作
+  setTimeout(() => {
+    jsonEditor.refresh();
+  }, 100);
 }
 
 // 初始化响应数据编辑器
@@ -104,6 +116,8 @@ function initResponseEditor() {
     indentUnit: 2,
     tabSize: 2,
     lineWrapping: true,
+    viewportMargin: Infinity,
+    scrollbarStyle: "native",
     value: "响应数据将显示在这里"
   });
 }
@@ -440,6 +454,60 @@ function formatJson() {
   }
 }
 
+// 加载模板数据
+function loadTemplates() {
+  try {
+    // 读取模板文件
+    const templatesPath = path.join(__dirname, 'templates.json');
+    if (fs.existsSync(templatesPath)) {
+      const templatesData = fs.readFileSync(templatesPath, 'utf8');
+      templates = JSON.parse(templatesData);
+      
+      // 填充模板下拉列表
+      populateTemplateSelect();
+    } else {
+      console.error('模板文件不存在:', templatesPath);
+    }
+  } catch (error) {
+    console.error('加载模板失败:', error);
+  }
+}
+
+// 填充模板下拉列表
+function populateTemplateSelect() {
+  // 清空现有选项（保留默认选项）
+  while (templateSelect.options.length > 1) {
+    templateSelect.remove(1);
+  }
+  
+  // 添加模板选项
+  templates.forEach((template, index) => {
+    const option = document.createElement('option');
+    option.value = index;
+    option.textContent = template.name;
+    templateSelect.appendChild(option);
+  });
+}
+
+// 应用选中的模板
+function applyTemplate() {
+  const selectedIndex = templateSelect.value;
+  if (selectedIndex === '') {
+    return; // 未选择模板
+  }
+  
+  const template = templates[parseInt(selectedIndex)];
+  if (template) {
+    // 填充方法名称
+    methodNameInput.value = template.method;
+    
+    // 填充参数
+    const formattedParams = JSON.stringify(template.params, null, 2);
+    jsonEditor.setValue(formattedParams);
+    paramsInput.value = formattedParams; // 同步到隐藏的textarea
+  }
+}
+
 // 事件监听
 serverConfigForm.addEventListener('submit', (e) => {
   e.preventDefault();
@@ -452,6 +520,9 @@ rpcForm.addEventListener('submit', (e) => {
   e.preventDefault();
   sendRpcRequest();
 });
+
+// 模板选择事件
+templateSelect.addEventListener('change', applyTemplate);
 
 // 返回设备列表按钮点击事件
 const backToDevicesBtn = document.getElementById('back-to-devices');
