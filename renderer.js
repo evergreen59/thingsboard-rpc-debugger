@@ -2,16 +2,26 @@
 const { ipcRenderer } = require('electron');
 const axios = require('axios');
 const CodeMirror = require('codemirror');
+const fs = require('fs');
+const path = require('path');
 require('codemirror/mode/javascript/javascript');
 require('codemirror/addon/edit/matchbrackets');
 require('codemirror/addon/edit/closebrackets');
 
 // 全局变量
 let serverConfig = { url: '', accessToken: '' };
-let rpcHistory = [];
 let isConnected = false;
 let isDarkMode = false;
 let responseJsonEditor;
+
+// 日志相关
+const LOG_DIR = path.join(__dirname, 'logs');
+const LOG_FILE = path.join(LOG_DIR, 'rpc-debug.log');
+
+// 确保日志目录存在
+if (!fs.existsSync(LOG_DIR)) {
+  fs.mkdirSync(LOG_DIR, { recursive: true });
+}
 
 // DOM元素
 const serverUrlInput = document.getElementById('server-url');
@@ -19,8 +29,6 @@ const accessTokenInput = document.getElementById('access-token');
 const serverConfigForm = document.getElementById('server-config-form');
 const connectionStatus = document.getElementById('connection-status');
 const connectionText = document.getElementById('connection-text');
-const historyList = document.getElementById('history-list');
-const clearHistoryBtn = document.getElementById('clear-history');
 const methodNameInput = document.getElementById('method-name');
 const paramsInput = document.getElementById('params');
 const paramsEditor = document.getElementById('params-editor');
@@ -59,13 +67,6 @@ function initApp() {
     if (config.url && config.accessToken) {
       testConnection();
     }
-  });
-  
-  // 从主进程获取RPC历史记录
-  ipcRenderer.send('get-rpc-history');
-  ipcRenderer.once('rpc-history', (event, history) => {
-    rpcHistory = history;
-    renderHistoryList();
   });
   
   // 初始化主题
@@ -285,6 +286,7 @@ async function sendRpcRequest() {
   
   // 记录开始时间
   const startTime = new Date();
+  const timestamp = startTime.toISOString();
   
   try {
     // 构建双向RPC请求URL
@@ -303,6 +305,18 @@ async function sendRpcRequest() {
       'Content-Type': 'application/json',
       'X-Authorization': `Bearer ${authConfig.token}`
     };
+    
+    // 记录请求日志
+    const requestLog = {
+      timestamp: timestamp,
+      type: 'REQUEST',
+      method: methodName,
+      params: params,
+      url: rpcUrl
+    };
+    
+    // 写入日志文件
+    fs.appendFileSync(LOG_FILE, JSON.stringify(requestLog) + '\n');
     
     // 发送RPC请求
     const response = await axios.post(rpcUrl, {
@@ -324,8 +338,18 @@ async function sendRpcRequest() {
     responseData.textContent = formattedResponse; // 保持隐藏的文本区域同步
     responseTime.textContent = `响应时间: ${duration}ms`;
     
-    // 添加到历史记录
-    addToHistory(methodName, params, response.data);
+    // 记录响应日志
+    const responseLog = {
+      timestamp: endTime.toISOString(),
+      type: 'RESPONSE',
+      method: methodName,
+      duration: duration,
+      status: 'success',
+      data: response.data
+    };
+    
+    // 写入日志文件
+    fs.appendFileSync(LOG_FILE, JSON.stringify(responseLog) + '\n');
   } catch (error) {
     console.error('RPC请求失败:', error);
     
@@ -336,37 +360,52 @@ async function sendRpcRequest() {
     // 更新响应显示
     updateResponseStatus('error', `请求失败 (${duration}ms)`);
     
+    let errorData;
+    let errorDetails = {};
+    
     if (error.response) {
       // 服务器返回了错误响应
-      const errorData = JSON.stringify({
+      errorDetails = {
         status: error.response.status,
         statusText: error.response.statusText,
         data: error.response.data
-      }, null, 2);
+      };
+      errorData = JSON.stringify(errorDetails, null, 2);
       responseJsonEditor.setValue(errorData);
       responseData.textContent = errorData;
     } else if (error.request) {
       // 请求已发送但没有收到响应
-      const errorData = JSON.stringify({
+      errorDetails = {
         error: '没有收到响应',
         message: error.message
-      }, null, 2);
+      };
+      errorData = JSON.stringify(errorDetails, null, 2);
       responseJsonEditor.setValue(errorData);
       responseData.textContent = errorData;
     } else {
       // 请求设置时发生错误
-      const errorData = JSON.stringify({
+      errorDetails = {
         error: '请求错误',
         message: error.message
-      }, null, 2);
+      };
+      errorData = JSON.stringify(errorDetails, null, 2);
       responseJsonEditor.setValue(errorData);
       responseData.textContent = errorData;
     }
     
     responseTime.textContent = `响应时间: ${duration}ms`;
     
-    // 添加到历史记录（即使失败）
-    addToHistory(methodName, params, { error: error.message });
+    // 记录错误日志
+    const errorLog = {
+      timestamp: endTime.toISOString(),
+      type: 'ERROR',
+      method: methodName,
+      duration: duration,
+      error: errorDetails
+    };
+    
+    // 写入日志文件
+    fs.appendFileSync(LOG_FILE, JSON.stringify(errorLog) + '\n');
   }
 }
 
@@ -376,93 +415,12 @@ function updateResponseStatus(type, message) {
   responseStatus.textContent = message;
 }
 
-// 添加到历史记录
-function addToHistory(method, params, response) {
-  const historyItem = {
-    id: Date.now(),
-    timestamp: new Date().toISOString(),
-    method: method,
-    params: params,
-    response: response
-  };
-  
-  // 添加到历史记录数组的开头
-  rpcHistory.unshift(historyItem);
-  
-  // 限制历史记录数量为20条
-  if (rpcHistory.length > 20) {
-    rpcHistory = rpcHistory.slice(0, 20);
-  }
-  
-  // 保存到主进程
-  ipcRenderer.send('save-rpc-history', rpcHistory);
-  
-  // 更新历史记录显示
-  renderHistoryList();
-}
-
-// 渲染历史记录列表
-function renderHistoryList() {
-  historyList.innerHTML = '';
-  
-  if (rpcHistory.length === 0) {
-    const emptyItem = document.createElement('div');
-    emptyItem.className = 'history-item text-muted';
-    emptyItem.textContent = '暂无历史记录';
-    historyList.appendChild(emptyItem);
-    return;
-  }
-  
-  rpcHistory.forEach(item => {
-    const historyItem = document.createElement('div');
-    historyItem.className = 'history-item';
-    historyItem.dataset.id = item.id;
-    
-    // 格式化时间
-    const date = new Date(item.timestamp);
-    const formattedTime = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
-    
-    historyItem.innerHTML = `
-      <div><strong>${item.method}</strong></div>
-      <div class="text-muted small">${formattedTime}</div>
-    `;
-    
-    // 点击历史记录项加载到表单
-    historyItem.addEventListener('click', () => loadHistoryItem(item));
-    
-    historyList.appendChild(historyItem);
-  });
-}
-
-// 加载历史记录项到表单
-function loadHistoryItem(item) {
-  methodNameInput.value = item.method;
-  const formattedParams = JSON.stringify(item.params, null, 2);
-  paramsInput.value = formattedParams;
-  jsonEditor.setValue(formattedParams);
-  
-  // 显示历史响应
-  const formattedResponse = JSON.stringify(item.response, null, 2);
-  responseJsonEditor.setValue(formattedResponse);
-  responseData.textContent = formattedResponse;
-  responseStatus.className = 'alert alert-secondary';
-  responseStatus.textContent = '历史记录';
-  responseTime.textContent = `时间: ${new Date(item.timestamp).toLocaleString()}`;
-}
-
-// 清除历史记录
-function clearHistory() {
-  if (confirm('确定要清除所有历史记录吗？')) {
-    rpcHistory = [];
-    ipcRenderer.send('save-rpc-history', rpcHistory);
-    renderHistoryList();
-    
-    // 清空响应区域
-    responseJsonEditor.setValue('// 响应数据将显示在这里');
-    responseData.textContent = '// 响应数据将显示在这里';
-    responseStatus.className = 'alert alert-secondary';
-    responseStatus.textContent = '等待请求...';
-    responseTime.textContent = '';
+// 记录日志函数
+function logToFile(logData) {
+  try {
+    fs.appendFileSync(LOG_FILE, JSON.stringify(logData) + '\n');
+  } catch (error) {
+    console.error('写入日志文件失败:', error);
   }
 }
 
@@ -494,8 +452,6 @@ rpcForm.addEventListener('submit', (e) => {
   e.preventDefault();
   sendRpcRequest();
 });
-
-clearHistoryBtn.addEventListener('click', clearHistory);
 
 // 返回设备列表按钮点击事件
 const backToDevicesBtn = document.getElementById('back-to-devices');

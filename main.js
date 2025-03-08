@@ -169,13 +169,4 @@ ipcMain.on('get-server-config', (event) => {
   event.reply('server-config', config);
 });
 
-// RPC历史记录相关
-ipcMain.on('save-rpc-history', (event, history) => {
-  store.set('rpcHistory', history);
-  event.reply('rpc-history-saved', true);
-});
-
-ipcMain.on('get-rpc-history', (event) => {
-  const history = store.get('rpcHistory', []);
-  event.reply('rpc-history', history);
-});
+// 不再需要RPC历史记录相关的IPC处理程序，因为我们已经改为使用日志文件记录

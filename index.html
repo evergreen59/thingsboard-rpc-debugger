@@ -95,7 +95,7 @@
     </div>
     
     <div class="row">
-      <!-- 左侧面板：服务器配置和历史记录 -->
+      <!-- 左侧面板：服务器配置 -->
       <div class="col-md-3">
         <!-- 服务器配置 -->
         <div class="card">
@@ -120,19 +120,13 @@
             </form>
           </div>
         </div>
-        
-        <!-- 历史记录 -->
-        <div class="card">
+        <div class="card mt-3">
           <div class="card-header">
-            <h5 class="mb-0">历史记录</h5>
+            <h5 class="mb-0">日志信息</h5>
           </div>
-          <div class="card-body p-0">
-            <div id="history-list" class="list-group" style="max-height: 300px; overflow-y: auto;">
-              <!-- 历史记录项将通过JavaScript动态添加 -->
-            </div>
-          </div>
-          <div class="card-footer">
-            <button id="clear-history" class="btn btn-sm btn-outline-danger w-100">清除历史记录</button>
+          <div class="card-body">
+            <p class="text-muted small">所有RPC请求将被记录到日志文件中</p>
+            <p class="small">日志文件路径: <code>logs/rpc-debug.log</code></p>
           </div>
         </div>
       </div>

@@ -8893,3 +8893,4 @@ dist/win-unpacked/locales/zh-CN.pak
 dist/win-unpacked/locales/zh-TW.pak
 dist/win-unpacked/resources/app.asar
 dist/win-unpacked/resources/elevate.exe
+logs/rpc-debug.log
