@@ -18,31 +18,35 @@ function initApp() {
   // 初始化主题
   const themeManager = require('./theme-manager');
   themeManager.initTheme();
-  
+
   // 主题切换按钮点击事件
   const themeToggleBtn = document.getElementById('theme-toggle');
   if (themeToggleBtn) {
     themeToggleBtn.addEventListener('click', themeManager.toggleTheme);
   }
-  
+
   // 从主进程获取保存的认证配置
   ipcRenderer.send('get-auth-config');
   ipcRenderer.once('auth-config', (event, config) => {
     authConfig = config;
-    
+
     // 填充表单
     if (config.serverUrl) {
       serverUrlInput.value = config.serverUrl;
     }
-    
+
     if (config.username) {
       usernameInput.value = config.username;
     }
-    
+
     if (config.rememberMe !== undefined) {
       rememberMeCheckbox.checked = config.rememberMe;
+      // 如果记住密码选项被勾选且有保存的密码，填充密码字段
+      if (config.rememberMe && config.password) {
+        passwordInput.value = config.password;
+      }
     }
-    
+
     // 如果有refreshToken，尝试自动登录
     if (config.refreshToken) {
       tryAutoLogin(config);
@@ -55,35 +59,77 @@ async function tryAutoLogin(config) {
   try {
     // 显示正在登录提示
     showAlert('正在自动登录...', 'info');
-    
+
     // 使用refreshToken获取新的accessToken
     const response = await axios.post(`${config.serverUrl}/api/auth/token`, {
       refreshToken: config.refreshToken
     });
-    
+
+    if (response.code === 200) {
+      // 登录成功，保存token信息
+      const authData = {
+        serverUrl: config.serverUrl,
+        username: config.username,
+        rememberMe: config.rememberMe,
+        password: config.password, // 保留已保存的密码
+        token: response.data.token,
+        refreshToken: response.data.refreshToken,
+        userId: response.data.userId
+      };
+
+      // 保存认证信息
+      ipcRenderer.send('save-auth-config', authData);
+
+      // 跳转到主页面
+      ipcRenderer.send('navigate-to-main');
+    } else {
+      // refreshToken刷新失败，尝试使用保存的密码重新登录
+      if (config.rememberMe && config.password) {
+        console.log('使用保存的密码尝试重新登录');
+        await loginWithSavedPassword(config);
+      } else {
+        // 自动登录失败，清除提示，等待用户手动登录
+        hideAlert();
+      }
+    }
+  } catch (error) {
+    console.error('自动登录失败:', error);
+  }
+}
+
+// 使用保存的密码登录
+async function loginWithSavedPassword(config) {
+  try {
+    showAlert('使用保存的密码重新登录...', 'info');
+
+    // 发送登录请求
+    const response = await axios.post(`${config.serverUrl}/api/auth/login`, {
+      username: config.username,
+      password: config.password
+    });
+
     if (response.data && response.data.token) {
       // 登录成功，保存token信息
       const authData = {
         serverUrl: config.serverUrl,
         username: config.username,
         rememberMe: config.rememberMe,
+        password: config.password,
         token: response.data.token,
         refreshToken: response.data.refreshToken,
         userId: response.data.userId
       };
-      
+
       // 保存认证信息
       ipcRenderer.send('save-auth-config', authData);
-      
+
       // 跳转到主页面
       ipcRenderer.send('navigate-to-main');
     } else {
-      // 自动登录失败，清除提示，等待用户手动登录
-      hideAlert();
+      showAlert('自动登录失败：无效的响应', 'danger');
     }
   } catch (error) {
-    console.error('自动登录失败:', error);
-    // 自动登录失败，清除提示，等待用户手动登录
+    console.error('使用保存的密码登录失败:', error);
     hideAlert();
   }
 }
@@ -95,47 +141,49 @@ async function login() {
   const username = usernameInput.value.trim();
   const password = passwordInput.value;
   const rememberMe = rememberMeCheckbox.checked;
-  
+
   // 验证表单
   if (!serverUrl) {
     showAlert('请输入服务器URL', 'danger');
     return;
   }
-  
+
   if (!username) {
     showAlert('请输入用户名', 'danger');
     return;
   }
-  
+
   if (!password) {
     showAlert('请输入密码', 'danger');
     return;
   }
-  
+
   try {
     // 显示正在登录提示
     showAlert('正在登录...', 'info');
-    
+
     // 发送登录请求
     const response = await axios.post(`${serverUrl}/api/auth/login`, {
       username: username,
       password: password
     });
-    
+
     if (response.data && response.data.token) {
       // 登录成功，保存token信息
       const authData = {
         serverUrl: serverUrl,
         username: username,
         rememberMe: rememberMe,
+        // 如果选择记住密码，则保存密码
+        password: rememberMe ? password : undefined,
         token: response.data.token,
         refreshToken: response.data.refreshToken,
         userId: response.data.userId
       };
-      
+
       // 保存认证信息
       ipcRenderer.send('save-auth-config', authData);
-      
+
       // 跳转到主页面
       ipcRenderer.send('navigate-to-main');
     } else {
@@ -143,7 +191,7 @@ async function login() {
     }
   } catch (error) {
     console.error('登录失败:', error);
-    
+
     if (error.response) {
       // 服务器返回了错误响应
       if (error.response.status === 401) {

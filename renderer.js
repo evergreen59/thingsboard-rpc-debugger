@@ -180,6 +180,36 @@ function saveServerConfig() {
   });
 }
 
+// 刷新JWT令牌
+async function refreshToken(config) {
+  try {
+    // 使用refreshToken获取新的accessToken
+    const response = await axios.post(`${config.serverUrl}/api/auth/token`, {
+      refreshToken: config.refreshToken
+    });
+    
+    if (response.data && response.data.token) {
+      // 更新token
+      const newConfig = {
+        ...config,
+        token: response.data.token,
+        refreshToken: response.data.refreshToken
+      };
+      
+      // 保存到主进程
+      ipcRenderer.send('save-auth-config', newConfig);
+      
+      return newConfig;
+    } else {
+      console.error('刷新令牌失败：无效的响应');
+      return null;
+    }
+  } catch (error) {
+    console.error('刷新令牌失败:', error);
+    return null;
+  }
+}
+
 // 测试与ThingsBoard服务器的连接
 async function testConnection() {
   // 显示测试中状态
@@ -293,7 +323,7 @@ async function sendRpcRequest() {
   const timeout = parseInt(timeoutInput.value) || 5000;
   
   // 清空之前的响应
-  responseData.textContent = '// 正在发送请求...';
+  responseData.textContent = '正在发送请求...';
   responseStatus.className = 'alert alert-info';
   responseStatus.textContent = '请求中...';
   responseTime.textContent = '';
@@ -370,6 +400,63 @@ async function sendRpcRequest() {
     // 计算响应时间
     const endTime = new Date();
     const duration = endTime - startTime;
+    
+    // 检查是否是令牌过期错误（401）
+    if (error.response && error.response.status === 401) {
+      try {
+        // 尝试刷新令牌
+        console.log('JWT令牌已过期，尝试刷新...');
+        const newAuthConfig = await refreshToken(authConfig);
+        
+        if (newAuthConfig && newAuthConfig.token) {
+          console.log('令牌刷新成功，重新发送请求...');
+          
+          // 使用新令牌重新发送请求
+          const headers = {
+            'Content-Type': 'application/json',
+            'X-Authorization': `Bearer ${newAuthConfig.token}`
+          };
+          
+          // 重新发送RPC请求
+          const response = await axios.post(rpcUrl, {
+            method: methodName,
+            params: params
+          }, { 
+            timeout: timeout,
+            headers: headers
+          });
+          
+          // 计算响应时间
+          const retryEndTime = new Date();
+          const retryDuration = retryEndTime - startTime;
+          
+          // 更新响应显示
+          updateResponseStatus('success', `请求成功 (令牌已刷新) (${retryDuration}ms)`);
+          const formattedResponse = JSON.stringify(response.data, null, 2);
+          responseJsonEditor.setValue(formattedResponse);
+          responseData.textContent = formattedResponse;
+          responseTime.textContent = `响应时间: ${retryDuration}ms`;
+          
+          // 记录响应日志
+          const responseLog = {
+            timestamp: retryEndTime.toISOString(),
+            type: 'RESPONSE',
+            method: methodName,
+            duration: retryDuration,
+            status: 'success (token refreshed)',
+            data: response.data
+          };
+          
+          // 写入日志文件
+          fs.appendFileSync(LOG_FILE, JSON.stringify(responseLog) + '\n');
+          
+          return; // 成功处理，退出函数
+        }
+      } catch (refreshError) {
+        console.error('刷新令牌失败:', refreshError);
+        // 继续执行原来的错误处理逻辑
+      }
+    }
     
     // 更新响应显示
     updateResponseStatus('error', `请求失败 (${duration}ms)`);
@@ -457,17 +544,48 @@ function formatJson() {
 // 加载模板数据
 function loadTemplates() {
   try {
-    // 读取模板文件
-    const templatesPath = path.join(__dirname, 'templates.json');
-    if (fs.existsSync(templatesPath)) {
-      const templatesData = fs.readFileSync(templatesPath, 'utf8');
-      templates = JSON.parse(templatesData);
+    // 从主进程获取应用程序路径
+    ipcRenderer.send('get-app-path');
+    ipcRenderer.once('app-path', (event, appPath) => {
+      // 读取模板文件（从exe所在目录）
+      const templatesPath = path.join(appPath, 'templates.json');
+      
+      // 检查模板文件是否存在
+      if (fs.existsSync(templatesPath)) {
+        const templatesData = fs.readFileSync(templatesPath, 'utf8');
+        templates = JSON.parse(templatesData);
+      } else {
+        // 如果模板文件不存在，创建默认模板文件
+        const defaultTemplates = [
+          {
+            "name": "重启设备",
+            "method": "reboot",
+            "params": {
+              "delay": 5,
+              "force": false
+            }
+          },
+          {
+            "name": "获取设备状态",
+            "method": "getStatus",
+            "params": {}
+          },
+          {
+            "name": "获取设备软件版本号",
+            "method": "getVersion",
+            "params": {}
+          }
+        ];
+        
+        // 写入默认模板文件
+        fs.writeFileSync(templatesPath, JSON.stringify(defaultTemplates, null, 2), 'utf8');
+        templates = defaultTemplates;
+        console.log('已创建默认模板文件:', templatesPath);
+      }
       
       // 填充模板下拉列表
       populateTemplateSelect();
-    } else {
-      console.error('模板文件不存在:', templatesPath);
-    }
+    });
   } catch (error) {
     console.error('加载模板失败:', error);
   }

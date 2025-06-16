@@ -1,21 +1,5 @@
 [
   {
-    "name": "获取设备属性",
-    "method": "getAttributes",
-    "params": {
-      "clientKeys": ["firmware_version", "serial_number"],
-      "sharedKeys": ["active", "inactivityAlarmTime"]
-    }
-  },
-  {
-    "name": "设置设备属性",
-    "method": "setAttributes",
-    "params": {
-      "firmware_version": "1.0.0",
-      "active": true
-    }
-  },
-  {
     "name": "重启设备",
     "method": "reboot",
     "params": {

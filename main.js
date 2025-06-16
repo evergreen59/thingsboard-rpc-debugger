@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, shell } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
 
@@ -71,12 +71,18 @@ function createWindow() {
           label: '关于',
           click: async () => {
             const { dialog } = require('electron');
-            dialog.showMessageBox(mainWindow, {
+            const response = dialog.showMessageBoxSync(mainWindow, {
               title: '关于',
               message: 'ThingsBoard RPC调试工具',
-              detail: '版本 1.0.0\n一个用于调试ThingsBoard RPC接口的工具',
-              buttons: ['确定']
+              detail: '版本 1.0.1\n作者 EverGreen\n一个用于调试ThingsBoard RPC接口的工具',
+              icon: path.join(__dirname, 'assets/icon.png'),
+              buttons: ['确定', '访问项目主页']
             });
+            
+            // 如果用户点击了"访问项目主页"按钮
+            if (response === 1) {
+              shell.openExternal('https://github.com/evergreen59/thingsboard-rpc-debugger');
+            }
           }
         }
       ]
@@ -170,3 +176,12 @@ ipcMain.on('get-server-config', (event) => {
 });
 
 // 不再需要RPC历史记录相关的IPC处理程序，因为我们已经改为使用日志文件记录
+
+// 应用程序路径相关
+ipcMain.on('get-app-path', (event) => {
+  // 获取应用程序可执行文件所在目录
+  const appPath = path.dirname(process.execPath);
+  // 在开发环境中，使用当前目录
+  const exePath = app.isPackaged ? appPath : __dirname;
+  event.reply('app-path', exePath);
+});

@@ -177,18 +177,64 @@ async function tryRefreshToken() {
       // 重新加载设备列表
       loadDevices();
     } else {
-      // 刷新token失败，需要重新登录
-      showError('会话已过期，请重新登录');
-      setTimeout(() => {
-        ipcRenderer.send('navigate-to-login');
-      }, 2000);
+      // 刷新token失败，尝试使用保存的密码重新登录
+      await tryLoginWithSavedPassword();
     }
   } catch (error) {
     console.error('刷新Token失败:', error);
+    // 尝试使用保存的密码重新登录
+    await tryLoginWithSavedPassword();
+  }
+}
+
+// 使用保存的密码尝试重新登录
+async function tryLoginWithSavedPassword() {
+  try {
+    // 检查是否有保存的用户名和密码
+    if (authConfig.rememberMe && authConfig.password) {
+      showError('正在尝试使用保存的密码重新登录...');
+      
+      // 发送登录请求
+      const response = await axios.post(`${authConfig.serverUrl}/api/auth/login`, {
+        username: authConfig.username,
+        password: authConfig.password
+      });
+
+      if (response.data && response.data.token) {
+        // 登录成功，更新token信息
+        authConfig.token = response.data.token;
+        authConfig.refreshToken = response.data.refreshToken;
+        authConfig.userId = response.data.userId;
+        
+        // 保存到主进程
+        ipcRenderer.send('save-auth-config', authConfig);
+        
+        // 重新加载设备列表
+        showError('重新登录成功，正在刷新数据...');
+        setTimeout(() => {
+          hideError();
+          loadDevices();
+        }, 1500);
+        
+        return true;
+      }
+    }
+    
+    // 没有保存的密码或登录失败，需要手动登录
     showError('会话已过期，请重新登录');
     setTimeout(() => {
       ipcRenderer.send('navigate-to-login');
     }, 2000);
+    
+    return false;
+  } catch (error) {
+    console.error('使用保存的密码登录失败:', error);
+    showError('会话已过期，请重新登录');
+    setTimeout(() => {
+      ipcRenderer.send('navigate-to-login');
+    }, 2000);
+    
+    return false;
   }
 }
 
