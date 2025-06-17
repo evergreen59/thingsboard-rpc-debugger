@@ -16,13 +16,42 @@ let responseJsonEditor;
 let templates = []; // 存储模板数据
 
 // 日志相关
-const LOG_DIR = path.join(__dirname, 'logs');
-const LOG_FILE = path.join(LOG_DIR, 'rpc-debug.log');
+let LOG_DIR;
+let LOG_FILE;
 
-// 确保日志目录存在
-if (!fs.existsSync(LOG_DIR)) {
-  fs.mkdirSync(LOG_DIR, { recursive: true });
-}
+// 从主进程获取应用程序路径
+ipcRenderer.send('get-app-path');
+ipcRenderer.once('app-path', (event, appPath) => {
+  // 设置日志目录为应用程序所在目录下的logs文件夹
+  LOG_DIR = path.join(appPath, 'logs');
+  LOG_FILE = path.join(LOG_DIR, 'rpc-debug.log');
+  
+  // 确保日志目录存在
+  if (!fs.existsSync(LOG_DIR)) {
+    fs.mkdirSync(LOG_DIR, { recursive: true });
+  }
+  
+  console.log('日志文件路径:', LOG_FILE);
+  
+  // 更新页面上显示的日志文件路径
+  const logFilePathElement = document.getElementById('log-file-path');
+  if (logFilePathElement) {
+    logFilePathElement.textContent = LOG_FILE;
+  }
+  
+  // 处理待写入的日志数据
+  if (window.pendingLogs && window.pendingLogs.length > 0) {
+    console.log(`写入${window.pendingLogs.length}条待处理的日志数据`);
+    window.pendingLogs.forEach(logData => {
+      try {
+        fs.appendFileSync(LOG_FILE, JSON.stringify(logData) + '\n');
+      } catch (error) {
+        console.error('写入待处理日志失败:', error);
+      }
+    });
+    window.pendingLogs = [];
+  }
+});
 
 // DOM元素
 const serverUrlInput = document.getElementById('server-url');
@@ -360,7 +389,7 @@ async function sendRpcRequest() {
     };
     
     // 写入日志文件
-    fs.appendFileSync(LOG_FILE, JSON.stringify(requestLog) + '\n');
+    logToFile(requestLog);
     
     // 发送RPC请求
     const response = await axios.post(rpcUrl, {
@@ -393,7 +422,7 @@ async function sendRpcRequest() {
     };
     
     // 写入日志文件
-    fs.appendFileSync(LOG_FILE, JSON.stringify(responseLog) + '\n');
+    logToFile(responseLog);
   } catch (error) {
     console.error('RPC请求失败:', error);
     
@@ -448,7 +477,7 @@ async function sendRpcRequest() {
           };
           
           // 写入日志文件
-          fs.appendFileSync(LOG_FILE, JSON.stringify(responseLog) + '\n');
+          logToFile(responseLog);
           
           return; // 成功处理，退出函数
         }
@@ -506,7 +535,7 @@ async function sendRpcRequest() {
     };
     
     // 写入日志文件
-    fs.appendFileSync(LOG_FILE, JSON.stringify(errorLog) + '\n');
+    logToFile(errorLog);
   }
 }
 
@@ -519,7 +548,15 @@ function updateResponseStatus(type, message) {
 // 记录日志函数
 function logToFile(logData) {
   try {
-    fs.appendFileSync(LOG_FILE, JSON.stringify(logData) + '\n');
+    // 确保LOG_FILE已经初始化
+    if (LOG_FILE) {
+      fs.appendFileSync(LOG_FILE, JSON.stringify(logData) + '\n');
+    } else {
+      console.warn('日志文件路径尚未初始化，无法写入日志');
+      // 将日志数据保存到队列中，等LOG_FILE初始化后再写入
+      if (!window.pendingLogs) window.pendingLogs = [];
+      window.pendingLogs.push(logData);
+    }
   } catch (error) {
     console.error('写入日志文件失败:', error);
   }
