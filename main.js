@@ -1,6 +1,8 @@
 const { app, BrowserWindow, ipcMain, Menu, shell } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
+const https = require('https');
+const http = require('http');
 
 // 初始化配置存储
 const store = new Store();
@@ -184,4 +186,62 @@ ipcMain.on('get-app-path', (event) => {
   // 在开发环境中，使用当前目录
   const exePath = app.isPackaged ? appPath : __dirname;
   event.reply('app-path', exePath);
+});
+
+// Bing每日图片相关
+ipcMain.handle('get-bing-image', async () => {
+  return new Promise((resolve, reject) => {
+    const apiUrl = 'https://cn.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1&mkt=zh-CN';
+    
+    https.get(apiUrl, (res) => {
+      let data = '';
+      
+      res.on('data', (chunk) => {
+        data += chunk;
+      });
+      
+      res.on('end', () => {
+        try {
+          const jsonData = JSON.parse(data);
+          if (jsonData.images && jsonData.images.length > 0) {
+            const imageInfo = jsonData.images[0];
+            const baseUrl = 'https://cn.bing.com';
+            const imageUrl = baseUrl + imageInfo.url;
+            
+            resolve({
+              success: true,
+              imageUrl: imageUrl,
+              imageInfo: imageInfo
+            });
+          } else {
+            resolve({ success: false, error: 'No images found' });
+          }
+        } catch (error) {
+          resolve({ success: false, error: 'Failed to parse response: ' + error.message });
+        }
+      });
+    }).on('error', (error) => {
+      resolve({ success: false, error: 'Network error: ' + error.message });
+    });
+  });
+});
+
+// 检查网络连接
+ipcMain.handle('check-network', async () => {
+  return new Promise((resolve) => {
+    const req = https.request('https://cn.bing.com', { method: 'HEAD', timeout: 5000 }, (res) => {
+      resolve({ isOnline: true });
+    });
+    
+    req.on('error', () => {
+      resolve({ isOnline: false });
+    });
+    
+    req.on('timeout', () => {
+      req.destroy();
+      resolve({ isOnline: false });
+    });
+    
+    req.end();
+  });
 });

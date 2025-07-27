@@ -27,33 +27,109 @@
     
     body {
       padding: 20px;
-      background-color: var(--bg-color);
       color: var(--text-color);
-      transition: background-color 0.3s ease;
+      transition: all 0.3s ease;
+      min-height: 100vh;
+      position: relative;
+    }
+    
+    /* 渐变背景样式（回退选项）*/
+    body.gradient-background {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+      background-size: 400% 400%;
+      background-attachment: fixed;
+      animation: gradientShift 15s ease infinite;
+    }
+    
+    [data-bs-theme="dark"] body.gradient-background {
+      background: linear-gradient(135deg, #2c3e50 0%, #4a6741 50%, #2d1b69 100%);
+      background-size: 400% 400%;
+      animation: gradientShift 15s ease infinite;
+    }
+    
+    /* Bing图片背景样式 */
+    body.bing-background {
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      background-repeat: no-repeat;
+    }
+    
+    body::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+      pointer-events: none;
+      z-index: 0;
+    }
+    
+    .container-fluid {
+      position: relative;
+      z-index: 1;
+    }
+    
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
     }
     .card {
       margin-bottom: 20px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      background-color: var(--card-bg);
-      border-color: var(--border-color);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+      background-color: rgba(255, 255, 255, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(15px);
+      -webkit-backdrop-filter: blur(15px);
+      border-radius: 12px;
+      transition: all 0.3s ease;
+    }
+    
+    [data-bs-theme="dark"] .card {
+      background-color: rgba(52, 58, 64, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
     }
     .history-item {
       cursor: pointer;
       padding: 8px 12px;
-      border-bottom: 1px solid var(--border-color);
+      border-bottom: 1px solid rgba(222, 226, 230, 0.3);
+      transition: all 0.2s ease;
     }
     .history-item:hover {
-      background-color: var(--hover-color);
+      background-color: rgba(240, 240, 240, 0.6);
+      transform: translateX(5px);
+    }
+    
+    [data-bs-theme="dark"] .history-item {
+      border-bottom: 1px solid rgba(73, 80, 87, 0.3);
+    }
+    
+    [data-bs-theme="dark"] .history-item:hover {
+      background-color: rgba(73, 80, 87, 0.6);
     }
     .response-area {
       min-height: 200px;
       max-height: 400px;
       overflow-y: auto;
-      background-color: var(--bg-color);
-      border: 1px solid var(--border-color);
-      border-radius: 4px;
+      background-color: rgba(248, 249, 250, 0.8);
+      border: 1px solid rgba(222, 226, 230, 0.5);
+      border-radius: 8px;
       padding: 10px;
       font-family: monospace;
+      backdrop-filter: blur(5px);
+    }
+    
+    [data-bs-theme="dark"] .response-area {
+      background-color: rgba(33, 37, 41, 0.8);
+      border: 1px solid rgba(73, 80, 87, 0.5);
     }
     .status-indicator {
       width: 12px;
@@ -212,6 +288,16 @@
     </div>
   </div>
 
+  <script src="./background-manager.js"></script>
   <script src="./renderer.js"></script>
+  <script>
+    // 初始化背景管理器
+    const backgroundManager = new BackgroundManager();
+    
+    // 添加刷新背景按钮功能（可选）
+    document.addEventListener('DOMContentLoaded', () => {
+      // 可以在这里添加背景状态显示或刷新按钮
+    });
+  </script>
 </body>
 </html>
